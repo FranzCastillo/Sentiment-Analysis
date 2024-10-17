@@ -1,4 +1,5 @@
 from dash import Dash, html, dcc, Input, Output
+
 from utils.data import Data
 
 PURPLE = '#7b72aa'
@@ -44,6 +45,7 @@ app.layout = html.Div(
     ]
 )
 
+
 # Define the callback function to update the prediction result
 @app.callback(
     Output('prediction-result', 'children'),
@@ -55,6 +57,7 @@ def update_prediction(input_text):
         prediction = data.predict([input_text])[0]
         return f'Prediction: {prediction}'
     return 'Enter text to get prediction'
+
 
 if __name__ == '__main__':
     app.run(debug=True)
