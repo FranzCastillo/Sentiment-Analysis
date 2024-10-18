@@ -46,14 +46,14 @@ class Data:
             nltk.download('vader_lexicon')
             nltk.download('stopwords')
 
-        self.data = pd.read_csv(data_path)
+        self.df = pd.read_csv(data_path)
         self._vectorizer = self._init_vectorizer()
         self.sia = SentimentIntensityAnalyzer()
         self.model = joblib.load('data/model.pkl')
 
     def _init_vectorizer(self) -> CountVectorizer:
         vectorizer = CountVectorizer()
-        vectorizer.fit(self.data['text_clean'])
+        vectorizer.fit(self.df['text_clean'])
         return vectorizer
 
     def _get_sentiment_score(self, text: str) -> float:
@@ -70,3 +70,11 @@ class Data:
         # Combine the vectorized text with the sentiment scores
         X_combined = np.hstack([X_vectorized.toarray(), sentiment_scores.reshape(-1, 1)])
         return self.model.predict(X_combined)
+
+    def get_frequencies(self):
+        target_counts = self.df['target'].value_counts().reset_index()
+        target_counts.columns = ['target', 'count']
+        return target_counts
+
+    def get_frequency(self, disaster_type: str) -> pd.Series:
+        return self.df[disaster_type].value_counts()
