@@ -1,5 +1,5 @@
 import plotly.express as px
-from dash import Dash, html, dcc, Input, Output
+from dash import Dash, html, dcc, Input, Output, State
 
 from utils.data import Data
 
@@ -11,7 +11,6 @@ BG = '#f1eae1'
 DISABLED = '#d3d3d3'
 BLACK = '#2d2d2d'
 
-# Assuming the Data class is correctly implemented in utils.data and the CSV file is available
 data = Data('data/disaster.csv')
 
 app = Dash()
@@ -19,7 +18,6 @@ app = Dash()
 app.layout = html.Div(
     style={
         'backgroundColor': RED,
-        'height': '95vh',
         'width': '95vw',
         'margin': '0',
         'padding': '2rem',
@@ -35,7 +33,7 @@ app.layout = html.Div(
                 'backgroundColor': CYAN,
                 'padding': '1rem',
                 'border': '2px solid black',
-                'shadow': '2px 2px 2px black'
+                'shadow': '2px 2px 2px black',
             }
         ),
         html.Div(  # Frecuencia del tipo de desastres
@@ -43,6 +41,7 @@ app.layout = html.Div(
                 'backgroundColor': BG,
                 'border': '2px solid black',
                 'padding': '1rem',
+                'marginBottom': '2rem',
             },
             children=[
                 html.H2(
@@ -77,16 +76,17 @@ app.layout = html.Div(
                                         'flexDirection': 'column',
                                         'justifyContent': 'center',
                                         'padding': '1rem',
+                                        'backgroundColor': YELLOW,
+                                        'border': '1px solid black',
                                     },
                                     children=[
-                                        html.P('Tweets'),
+                                        html.P('Tweets', style={'fontSize': '1.5rem', 'fontWeight': 'bold'}),
                                         html.Div(
                                             id='tweets-container',
                                             style={
                                                 'overflowY': 'scroll',
-                                                'height': '50vh',
                                                 'border': '1px solid black',
-                                                'padding': '1rem 1rem 1rem 0',
+                                                'padding': '1rem',
                                                 'backgroundColor': BG,
                                             }
                                         )
@@ -99,11 +99,46 @@ app.layout = html.Div(
                 ),
             ]
         ),
+        html.Div(
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+            },
+            children=[
+                html.H2(
+                    'Predicción de desastres',
+                ),
+                html.P(
+                    'Ingrese un texto para obtener la predicción',
+                ),
+                html.Div(
+                    style={
+                        'display': 'flex',
+                        'flexDirection': 'row',
+                        'justifyContent': 'space-between',
+                    },
+                    children=[
+                        html.Div(
+                            style={'width': '50%'},
+                            children=[
+                                dcc.Textarea(
+                                    id='input-text',
+                                    placeholder="Escribe tu 'tweet' aquí...",
+                                    style={'width': '100%', 'height': '10rem'}
+                                ),
+                                html.Button('Submit', id='submit-button', n_clicks=0, style={'marginTop': '1rem', 'width': '100%', 'backgroundColor': CYAN})
+                            ]
+                        ),
+                        html.P(id='prediction-result', style={'width': '50%', 'fontSize': '2rem', 'fontWeight': 'bold', 'textAlign': 'center'})
+                    ]
+                )
+            ]
+        )
     ]
 )
 
 
-# Define the callback function to update the prediction result
 @app.callback(
     Output('bar-plot', 'figure'),
     Input('disaster-type', 'value')
@@ -128,20 +163,24 @@ def update_bar_plot(selected_type):
 
     return fig
 
+
 @app.callback(
-    Output('tweets-container', 'children'),
-    Input('disaster-type', 'value')
+    Output('prediction-result', 'children'),
+    Input('submit-button', 'n_clicks'),
+    State('input-text', 'value')
 )
-def update_tweets(selected_type):
-    if selected_type is not None:
-        filtered_df = data.df[data.df['target'] == selected_type]
-        tweets = filtered_df['text'].tolist()
-        return [html.P(tweet) for tweet in tweets]
-    else:
-        return [html.P('Seleccione un tipo de desastre')]
-
-
-
+def update_prediction(n_clicks, input_text):
+    if n_clicks > 0:
+        if input_text:
+            prediction = data.predict([input_text])[0]
+            prediction_result = 'Natural' if prediction == 1 else 'Metáfora'
+            color = CYAN if prediction == 1 else RED
+            return html.P([
+                "El desastre es... ",
+                html.Span(prediction_result, style={'color': color})
+            ])
+        return 'Enter text to get prediction'
+    return ''
 
 if __name__ == '__main__':
     app.run(debug=True)
