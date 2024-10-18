@@ -99,7 +99,71 @@ app.layout = html.Div(
                 ),
             ]
         ),
-        html.Div(
+        html.Div(  # Frecuencia del sentimiento
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+                'marginBottom': '2rem',
+            },
+            children=[
+                html.H2(
+                    'Frecuencia del tipo de sentimiento',
+                ),
+                html.Div(
+                    children=[
+                        html.P(
+                            'Seleccione el tipo de sentimiento:',
+                        ),
+                        dcc.Dropdown(
+                            id='sentiment-type',
+                            options=[
+                                {'label': 'Negativo', 'value': 'negative'},
+                                {'label': 'Neutral', 'value': 'neutral'},
+                                {'label': 'Positivo', 'value': 'positive'},
+                            ],
+                            value='',
+                            style={'width': '50%', }
+                        ),
+                        html.Div(
+                            style={
+                                'display': 'flex',
+                                'flexDirection': 'row',
+                                'justifyContent': 'space-between',
+                                'height': '50vh',
+                            },
+                            children=[
+                                dcc.Graph(id='bar-plot-sentiment'),
+                                html.Div(
+                                    style={
+                                        'display': 'flex',
+                                        'flexDirection': 'column',
+                                        'justifyContent': 'center',
+                                        'padding': '1rem',
+                                        'backgroundColor': YELLOW,
+                                        'border': '1px solid black',
+                                    },
+                                    children=[
+                                        html.P('Tweets', style={'fontSize': '1.5rem', 'fontWeight': 'bold'}),
+                                        html.Div(
+                                            id='tweets-container-sentiments',
+                                            style={
+                                                'overflowY': 'scroll',
+                                                'border': '1px solid black',
+                                                'padding': '1rem',
+                                                'backgroundColor': BG,
+                                            }
+                                        )
+                                    ]
+                                )
+
+                            ]
+                        )
+                    ]
+                ),
+            ]
+        ),
+        html.Div(  # Predicción de desastres
             style={
                 'backgroundColor': BG,
                 'border': '2px solid black',
@@ -127,10 +191,12 @@ app.layout = html.Div(
                                     placeholder="Escribe tu 'tweet' aquí...",
                                     style={'width': '100%', 'height': '10rem'}
                                 ),
-                                html.Button('Submit', id='submit-button', n_clicks=0, style={'marginTop': '1rem', 'width': '100%', 'backgroundColor': CYAN})
+                                html.Button('Submit', id='submit-button', n_clicks=0,
+                                            style={'marginTop': '1rem', 'width': '100%', 'backgroundColor': CYAN})
                             ]
                         ),
-                        html.P(id='prediction-result', style={'width': '50%', 'fontSize': '2rem', 'fontWeight': 'bold', 'textAlign': 'center'})
+                        html.P(id='prediction-result',
+                               style={'width': '50%', 'fontSize': '2rem', 'fontWeight': 'bold', 'textAlign': 'center'})
                     ]
                 )
             ]
@@ -163,6 +229,63 @@ def update_bar_plot(selected_type):
 
     return fig
 
+@app.callback(
+    Output('tweets-container', 'children'),
+    Input('disaster-type', 'value')
+)
+def update_tweets(selected_type):
+    if selected_type is not None:
+        filtered_df = data.df[data.df['target'] == selected_type]
+        tweets = filtered_df['text'].tolist()
+        return [html.P(tweet) for tweet in tweets]
+    else:
+        return [html.P('Seleccione un tipo de desastre')]
+
+
+def _get_sentiment_color(sentiment: str) -> str:
+    if sentiment == 'positive':
+        return CYAN
+    elif sentiment == 'neutral':
+        return YELLOW
+    return RED  # Negative
+
+
+@app.callback(
+    Output('bar-plot-sentiment', 'figure'),
+    Input('sentiment-type', 'value')
+)
+def update_bar_plot_sentiment(selected_type):
+    frequencies = data.get_sentiment_frequency()
+    colors = [_get_sentiment_color(sentiment) if sentiment == selected_type else DISABLED for sentiment in frequencies['sentiment']]
+
+    fig = px.bar(
+        frequencies.assign(sentiment=frequencies['sentiment'].map({'positive': 'Positivo', 'neutral': 'Neutral', 'negative': 'Negativo'})),
+        x='sentiment',
+        y='count',
+        color='sentiment',
+        color_discrete_sequence=colors,
+        labels={'sentiment': 'Tipo de sentimiento', 'count': 'Frecuencia'}
+    ).update_layout(
+        showlegend=False,
+        plot_bgcolor=BG,
+        paper_bgcolor=BG,
+        font_color=BLACK,
+    )
+
+    return fig
+
+@app.callback(
+    Output('tweets-container-sentiments', 'children'),
+    Input('sentiment-type', 'value')
+)
+def update_tweets_sentiment(selected_type):
+    if selected_type is not None:
+        filtered_df = data.df[data.df['sentiment'] == selected_type]
+        tweets = filtered_df['text'].tolist()
+        return [html.P(tweet) for tweet in tweets]
+    else:
+        return [html.P('Seleccione un tipo de sentimiento')]
+
 
 @app.callback(
     Output('prediction-result', 'children'),
@@ -181,6 +304,7 @@ def update_prediction(n_clicks, input_text):
             ])
         return 'Enter text to get prediction'
     return ''
+
 
 if __name__ == '__main__':
     app.run(debug=True)

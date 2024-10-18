@@ -76,5 +76,7 @@ class Data:
         target_counts.columns = ['target', 'count']
         return target_counts
 
-    def get_frequency(self, disaster_type: str) -> pd.Series:
-        return self.df[disaster_type].value_counts()
+    def get_sentiment_frequency(self):
+        sentiment_scores = self.df['sentiment'].value_counts().reset_index()
+        sentiment_scores.columns = ['sentiment', 'count']
+        return sentiment_scores
