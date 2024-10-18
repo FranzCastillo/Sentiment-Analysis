@@ -1,5 +1,10 @@
+import base64
+from io import BytesIO
+import random
+
 import plotly.express as px
 from dash import Dash, html, dcc, Input, Output, State
+from wordcloud import WordCloud
 
 from utils.data import Data
 
@@ -163,6 +168,52 @@ app.layout = html.Div(
                 ),
             ]
         ),
+        html.Div(  # Wordcloud
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+                'marginBottom': '2rem',
+            },
+            children=[
+                html.H2('Wordcloud según tipo de desastre'),
+                html.Div(
+                    style={
+                        'display': 'flex',
+                        'flexDirection': 'row',
+                        'justifyContent': 'space-between',
+                    },
+                    children=[
+                        dcc.Input(
+                            id='wordcloud-number',
+                            type='number',
+                            placeholder='Número de palabras',
+                            style={'width': '30%'}
+                        ),
+                        dcc.Dropdown(
+                            id='wordcloud-disaster-type',
+                            options=[
+                                {'label': 'Natural', 'value': 1},
+                                {'label': 'Metáfora', 'value': 0},
+                            ],
+                            placeholder='Seleccione el tipo de desastre',
+                            style={'width': '30%'}
+                        ),
+                        html.Button('Generar Wordcloud', id='generate-wordcloud', n_clicks=0, style={'width': '30%'})
+                    ]
+                ),
+                html.Div(
+                    id='wordcloud-container',
+                    style={
+                        'marginTop': '2rem',
+                        'width': '40%',
+                        # Align in center
+                        'marginLeft': 'auto',
+                        'marginRight': 'auto'
+                    }
+                )
+            ]
+        ),
         html.Div(  # Predicción de desastres
             style={
                 'backgroundColor': BG,
@@ -229,6 +280,7 @@ def update_bar_plot(selected_type):
 
     return fig
 
+
 @app.callback(
     Output('tweets-container', 'children'),
     Input('disaster-type', 'value')
@@ -256,10 +308,12 @@ def _get_sentiment_color(sentiment: str) -> str:
 )
 def update_bar_plot_sentiment(selected_type):
     frequencies = data.get_sentiment_frequency()
-    colors = [_get_sentiment_color(sentiment) if sentiment == selected_type else DISABLED for sentiment in frequencies['sentiment']]
+    colors = [_get_sentiment_color(sentiment) if sentiment == selected_type else DISABLED for sentiment in
+              frequencies['sentiment']]
 
     fig = px.bar(
-        frequencies.assign(sentiment=frequencies['sentiment'].map({'positive': 'Positivo', 'neutral': 'Neutral', 'negative': 'Negativo'})),
+        frequencies.assign(sentiment=frequencies['sentiment'].map(
+            {'positive': 'Positivo', 'neutral': 'Neutral', 'negative': 'Negativo'})),
         x='sentiment',
         y='count',
         color='sentiment',
@@ -274,6 +328,7 @@ def update_bar_plot_sentiment(selected_type):
 
     return fig
 
+
 @app.callback(
     Output('tweets-container-sentiments', 'children'),
     Input('sentiment-type', 'value')
@@ -285,6 +340,39 @@ def update_tweets_sentiment(selected_type):
         return [html.P(tweet) for tweet in tweets]
     else:
         return [html.P('Seleccione un tipo de sentimiento')]
+
+
+@app.callback(
+    Output('wordcloud-container', 'children'),
+    Input('generate-wordcloud', 'n_clicks'),
+    State('wordcloud-number', 'value'),
+    State('wordcloud-disaster-type', 'value')
+)
+def generate_wordcloud(n_clicks, num_words, disaster_type):
+    if n_clicks > 0 and num_words and disaster_type is not None:
+        filtered_df = data.df[data.df['target'] == disaster_type]
+        text = ' '.join(filtered_df['text_clean'].tolist())
+
+        if disaster_type == 1:
+            colors = ['#e37353', '#f18c6a', '#cc6042', '#d97b4e', '#b34f36']
+        else:
+            colors = ['#72aaa8', '#89c1bf', '#5d9492', '#68a1a0', '#4f8381']
+
+        # Define a custom color function to select colors from the list
+        def color_func(word, font_size, position, orientation, random_state=None, **kwargs):
+            return random.choice(colors)
+
+        # Generate the word cloud with the custom color function
+        wordcloud = WordCloud(max_words=num_words, background_color=BG, color_func=color_func).generate(text)
+
+        img = BytesIO()
+        wordcloud.to_image().save(img, format='PNG')
+        img.seek(0)
+        encoded_image = base64.b64encode(img.getvalue()).decode()
+
+        return html.Img(src=f'data:image/png;base64,{encoded_image}', style={'width': '100%'})
+
+    return html.P('Ingrese un número de palabras y seleccione un tipo de desastre para generar el wordcloud.')
 
 
 @app.callback(
