@@ -323,7 +323,7 @@ app.layout = html.Div(
                 dcc.Graph(id='keyword-frequency-graph')
             ]
         ),
-        html.Div( # Correlation heatmap
+        html.Div( # Sentiment Distribution
             style={
                 'backgroundColor': BG,
                 'border': '2px solid black',
@@ -349,6 +349,34 @@ app.layout = html.Div(
                     ]
                 ),
                 dcc.Graph(id='violin-plot')
+            ]
+        ),
+        html.Div( # Sentiment pie
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+                'marginBottom': '2rem',
+                'marginTop': '2rem',
+            },
+            children=[
+                html.H2('Distribución de sentimiento según tipo de desastre'),
+                html.Div(
+                    style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'space-between'},
+                    children=[
+                        dcc.Dropdown(
+                            id='pie-disaster-type',
+                            options=[
+                                {'label': 'Natural', 'value': 1},
+                                {'label': 'Metáfora', 'value': 0},
+                            ],
+                            placeholder='Seleccione el tipo de desastre',
+                            style={'width': '30%'},
+                            value=1
+                        ),
+                    ]
+                ),
+                dcc.Graph(id='pie-plot')
             ]
         ),
     ]
@@ -604,6 +632,32 @@ def update_violin_plot(disaster_type):
         points="all",
         labels={'sentiment_score': 'Sentiment Score', 'sentiment': 'Sentiment Type'},
         title='Distribución del Sentiment Score por tipo de sentimiento'
+    ).update_layout(
+        plot_bgcolor=BG,
+        paper_bgcolor=BG,
+        font_color=BLACK,
+    )
+
+    return fig
+
+@app.callback(
+    Output('pie-plot', 'figure'),
+    Input('pie-disaster-type', 'value')
+)
+def update_pie_plot(disaster_type):
+    
+    if disaster_type is None:
+        return {}
+    
+    filtered_df = data.df[data.df['target'] == disaster_type]
+
+    fig = px.pie(
+        filtered_df,
+        names='sentiment',
+        title='Distribución de sentimiento',
+        labels={'sentiment': 'Sentimiento'},
+        color='sentiment',
+        color_discrete_map={'positive': CYAN, 'neutral': YELLOW, 'negative': RED}
     ).update_layout(
         plot_bgcolor=BG,
         paper_bgcolor=BG,
