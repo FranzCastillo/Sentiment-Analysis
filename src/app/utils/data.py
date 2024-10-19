@@ -47,9 +47,10 @@ class Data:
             nltk.download('stopwords')
 
         self.df = pd.read_csv(data_path)
+        print(self.df.head())
         self._vectorizer = self._init_vectorizer()
         self.sia = SentimentIntensityAnalyzer()
-        self.model = joblib.load('data/model.pkl')
+        self.model = joblib.load('./src/app/data/model.pkl')
 
     def _init_vectorizer(self) -> CountVectorizer:
         vectorizer = CountVectorizer()

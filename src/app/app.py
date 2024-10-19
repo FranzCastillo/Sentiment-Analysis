@@ -16,7 +16,7 @@ BG = '#f1eae1'
 DISABLED = '#d3d3d3'
 BLACK = '#2d2d2d'
 
-data = Data('data/disaster.csv')
+data = Data('./src/app/data/disaster.csv')
 
 app = Dash()
 
@@ -251,7 +251,42 @@ app.layout = html.Div(
                     ]
                 )
             ]
-        )
+        ),
+        html.Div( # Word frequency
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+                'marginBottom': '2rem',
+                'marginTop': '2rem',
+            },
+            children=[
+                html.H2('Palabras según tipo de desastre'),
+                html.Div(
+                    style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'space-between'},
+                    children=[
+                        dcc.Input(
+                            id='word-number',
+                            type='number',
+                            placeholder='Número de palabras',
+                            style={'width': '30%'},
+                            value=10
+                        ),
+                        dcc.Dropdown(
+                            id='word-disaster-type',
+                            options=[
+                                {'label': 'Natural', 'value': 1},
+                                {'label': 'Metáfora', 'value': 0},
+                            ],
+                            placeholder='Seleccione el tipo de desastre',
+                            style={'width': '30%'},
+                            value=1
+                        ),
+                    ]
+                ),
+                dcc.Graph(id='word-frequency-graph')
+            ]
+        ),
     ]
 )
 
@@ -392,6 +427,50 @@ def update_prediction(n_clicks, input_text):
             ])
         return 'Enter text to get prediction'
     return ''
+
+@app.callback(
+    Output('word-frequency-graph', 'figure'),
+    [Input('word-number', 'value'),
+     Input('word-disaster-type', 'value')]
+)
+def update_word_freq(word_number, disaster_type):
+
+    if word_number is None or disaster_type is None:
+        return {}
+
+    # Filter the dataframe by disaster type
+    filtered_df = data.df[data.df['target'] == disaster_type]
+
+    # Get the word frequencies
+    word_frequencies = {}
+    for text in filtered_df['text_clean']:
+        for word in text.split():
+            if word in word_frequencies:
+                word_frequencies[word] += 1
+            else:
+                word_frequencies[word] = 1
+
+    # Order the word frequencies
+    sorted_word_frequencies = sorted(word_frequencies.items(), key=lambda x: x[1], reverse=True)
+
+    # Select the most common words
+    most_common_words = dict(sorted_word_frequencies[:word_number])
+
+    color = CYAN if disaster_type == 1 else RED
+
+    # Create the figure
+    fig = px.bar(
+        x=list(most_common_words.keys()),
+        y=list(most_common_words.values()),
+        labels={'x': 'Palabra', 'y': 'Frecuencia'},
+        color_discrete_sequence=[color] * word_number
+    ).update_layout(
+        plot_bgcolor=BG,
+        paper_bgcolor=BG,
+        font_color=BLACK,
+    )
+    
+    return fig
 
 
 if __name__ == '__main__':
