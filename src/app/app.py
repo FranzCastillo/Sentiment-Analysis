@@ -5,6 +5,7 @@ import random
 import plotly.express as px
 from dash import Dash, html, dcc, Input, Output, State
 from wordcloud import WordCloud
+import plotly.graph_objects as go
 
 from utils.data import Data
 
@@ -322,6 +323,34 @@ app.layout = html.Div(
                 dcc.Graph(id='keyword-frequency-graph')
             ]
         ),
+        html.Div( # Correlation heatmap
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+                'marginBottom': '2rem',
+                'marginTop': '2rem',
+            },
+            children=[
+                html.H2('Distribución de sentimiento según tipo de desastre'),
+                html.Div(
+                    style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'space-between'},
+                    children=[
+                        dcc.Dropdown(
+                            id='violin-disaster-type',
+                            options=[
+                                {'label': 'Natural', 'value': 1},
+                                {'label': 'Metáfora', 'value': 0},
+                            ],
+                            placeholder='Seleccione el tipo de desastre',
+                            style={'width': '30%'},
+                            value=1
+                        ),
+                    ]
+                ),
+                dcc.Graph(id='violin-plot')
+            ]
+        ),
     ]
 )
 
@@ -553,6 +582,34 @@ def update_keyword_freq(word_number, disaster_type):
         font_color=BLACK,
     )
     
+    return fig
+
+@app.callback(
+    Output('violin-plot', 'figure'),
+    Input('violin-disaster-type', 'value')
+)
+def update_violin_plot(disaster_type):
+
+    if disaster_type is None:
+        return {}
+
+    filtered_df = data.df[data.df['target'] == disaster_type]
+
+    fig = px.violin(
+        filtered_df,
+        y='sentiment_score',
+        x='sentiment',
+        color='sentiment',
+        box=True,
+        points="all",
+        labels={'sentiment_score': 'Sentiment Score', 'sentiment': 'Sentiment Type'},
+        title='Distribución del Sentiment Score por tipo de sentimiento'
+    ).update_layout(
+        plot_bgcolor=BG,
+        paper_bgcolor=BG,
+        font_color=BLACK,
+    )
+
     return fig
 
 if __name__ == '__main__':
