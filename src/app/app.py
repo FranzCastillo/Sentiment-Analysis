@@ -287,6 +287,41 @@ app.layout = html.Div(
                 dcc.Graph(id='word-frequency-graph')
             ]
         ),
+        html.Div( # Keyword frequency
+            style={
+                'backgroundColor': BG,
+                'border': '2px solid black',
+                'padding': '1rem',
+                'marginBottom': '2rem',
+                'marginTop': '2rem',
+            },
+            children=[
+                html.H2('Keywords según tipo de desastre'),
+                html.Div(
+                    style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'space-between'},
+                    children=[
+                        dcc.Input(
+                            id='keyword-number',
+                            type='number',
+                            placeholder='Número de palabras',
+                            style={'width': '30%'},
+                            value=10
+                        ),
+                        dcc.Dropdown(
+                            id='keyword-disaster-type',
+                            options=[
+                                {'label': 'Natural', 'value': 1},
+                                {'label': 'Metáfora', 'value': 0},
+                            ],
+                            placeholder='Seleccione el tipo de desastre',
+                            style={'width': '30%'},
+                            value=1
+                        ),
+                    ]
+                ),
+                dcc.Graph(id='keyword-frequency-graph')
+            ]
+        ),
     ]
 )
 
@@ -472,6 +507,53 @@ def update_word_freq(word_number, disaster_type):
     
     return fig
 
+
+@app.callback(
+    Output('keyword-frequency-graph', 'figure'),
+    [Input('keyword-number', 'value'),
+     Input('keyword-disaster-type', 'value')]
+)
+def update_keyword_freq(word_number, disaster_type):
+
+    if word_number is None or disaster_type is None:
+        return {}
+
+    # Filter the dataframe by disaster type
+    filtered_df = data.df[data.df['target'] == disaster_type]
+
+    # Get the word frequencies
+    word_frequencies = {}
+    for keyword in filtered_df['keyword']:
+        try:
+            keyword_parsed = str(keyword).lower().replace('%20', '_')
+            if keyword_parsed in word_frequencies:
+                word_frequencies[keyword_parsed] += 1
+            else:
+                word_frequencies[keyword_parsed] = 1
+        except:
+            continue
+
+    # Order the word frequencies
+    sorted_word_frequencies = sorted(word_frequencies.items(), key=lambda x: x[1], reverse=True)
+
+    # Select the most common words
+    most_common_words = dict(sorted_word_frequencies[:word_number])
+
+    color = CYAN if disaster_type == 1 else RED
+
+    # Create the figure
+    fig = px.bar(
+        x=list(most_common_words.keys()),
+        y=list(most_common_words.values()),
+        labels={'x': 'Keyword', 'y': 'Frecuencia'},
+        color_discrete_sequence=[color] * word_number
+    ).update_layout(
+        plot_bgcolor=BG,
+        paper_bgcolor=BG,
+        font_color=BLACK,
+    )
+    
+    return fig
 
 if __name__ == '__main__':
     app.run(debug=True)
