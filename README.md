@@ -1,4 +1,11 @@
 # Sentiment Analysis
+
+## How to use
+You can download the model [here](https://drive.google.com/file/d/1TNBYI2XctX8uJBJLhawc3xkgF3oGVe0D/view).
+
+Once downloaded, it should be placed in [this](src/app/data/) directory.
+
+In order to execute the app, run [this](src/app/app.py) python file.
  
 ## References
 
